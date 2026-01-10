@@ -1,0 +1,132 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// Phase 1: Authentication & Core
+// ============================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  name          String
+  
+  // NOTE: Signature stored as Base64 for Phase 1.
+  // Can be refactored to store in private storage (path only)
+  // without breaking API in future phases.
+  signature     String?   @db.Text
+  
+  role          Role      @relation(fields: [roleId], references: [id])
+  roleId        String
+  
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  auditLogs     AuditLog[]
+  refreshTokens RefreshToken[]
+  
+  @@map("users")
+}
+
+model Role {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  description String?
+  
+  permissions Permission[]
+  users       User[]
+  
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  code        String   @unique  // e.g., "sales.create", "inventory.view"
+  name        String
+  module      String   // e.g., "sales", "inventory"
+  
+  roles       Role[]
+  
+  createdAt   DateTime @default(now())
+  
+  @@map("permissions")
+}
+
+model RefreshToken {
+  id          String   @id @default(cuid())
+  token       String   @unique
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  
+  @@map("refresh_tokens")
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  
+  user        User     @relation(fields: [userId], references: [id])
+  userId      String
+  
+  action      String   // CREATE, UPDATE, DELETE, LOGIN, LOGOUT
+  module      String   // sales, inventory, etc.
+  recordId    String?  // ID of affected record
+  oldData     Json?    // Previous state
+  newData     Json?    // New state
+  
+  ipAddress   String?
+  userAgent   String?
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([userId])
+  @@index([module])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ============================================
+// Phase 2: Master Data (Future)
+// ============================================
+
+// model CostCenter {
+//   id          String   @id @default(cuid())
+//   code        String   @unique
+//   name        String
+//   isActive    Boolean  @default(true)
+//   createdAt   DateTime @default(now())
+//   updatedAt   DateTime @updatedAt
+//   @@map("cost_centers")
+// }
+
+// model Customer {
+//   id          String   @id @default(cuid())
+//   code        String   @unique
+//   name        String
+//   type        String   // GENERAL, MECHANIC
+//   ...
+// }
+
+// model Product {
+//   id          String   @id @default(cuid())
+//   sku         String   @unique
+//   barcode     String?  @unique
+//   name        String
+//   ...
+// }
