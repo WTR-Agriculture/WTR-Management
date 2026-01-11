@@ -7,6 +7,8 @@ import { AuthModule } from './auth';
 import { HealthModule } from './health';
 import { UsersModule } from './users';
 import { RolesModule } from './roles';
+import { BranchesModule } from './branches';
+import { EmployeesModule } from './employees';
 
 @Module({
   imports: [
@@ -22,9 +24,12 @@ import { RolesModule } from './roles';
     AuthModule,
     UsersModule,
     RolesModule,
+
+    // Phase 2: Master Data
+    BranchesModule,
+    EmployeesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule { }
-

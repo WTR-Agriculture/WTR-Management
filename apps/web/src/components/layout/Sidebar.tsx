@@ -12,8 +12,8 @@ import {
     Receipt,
     TrendingUp,
     Settings,
-    LogOut,
     ChevronLeft,
+    ChevronDown,
     Menu,
     Sparkles,
 } from 'lucide-react';
@@ -26,22 +26,39 @@ interface NavItem {
     href: string;
     icon: React.ElementType;
     permission?: string;
+    children?: NavItem[];
 }
 
 const navItems: NavItem[] = [
     { title: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { title: 'Users', href: '/dashboard/users', icon: Users, permission: 'users.view' },
-    { title: 'Roles', href: '/dashboard/roles', icon: Shield, permission: 'roles.view' },
     { title: 'Products', href: '/dashboard/products', icon: Package, permission: 'inventory.view' },
     { title: 'Sales', href: '/dashboard/sales', icon: ShoppingCart, permission: 'sales.view' },
     { title: 'Expenses', href: '/dashboard/expenses', icon: Receipt, permission: 'expense.view' },
     { title: 'Investment', href: '/dashboard/investment', icon: TrendingUp, permission: 'investment.view' },
-    { title: 'Settings', href: '/dashboard/settings', icon: Settings, permission: 'settings.view' },
+    {
+        title: 'Settings',
+        href: '/dashboard/settings',
+        icon: Settings,
+        permission: 'settings.view',
+        children: [
+            { title: 'Users', href: '/dashboard/users', icon: Users, permission: 'users.view' },
+            { title: 'Roles', href: '/dashboard/roles', icon: Shield, permission: 'roles.view' },
+            { title: 'Employees', href: '/dashboard/employees', icon: Users, permission: 'employees.view' },
+        ],
+    },
 ];
 
 export function Sidebar() {
     const pathname = usePathname();
     const [collapsed, setCollapsed] = useState(false);
+    const [openSubmenu, setOpenSubmenu] = useState<string | null>(
+        // Auto-open Settings if user is on a settings subpage
+        pathname.includes('/dashboard/users') || pathname.includes('/dashboard/roles') ? 'Settings' : null
+    );
+
+    const toggleSubmenu = (title: string) => {
+        setOpenSubmenu(openSubmenu === title ? null : title);
+    };
 
     return (
         <aside
@@ -78,22 +95,77 @@ export function Sidebar() {
             {/* Navigation */}
             <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
                 {navItems.map((item) => {
-                    const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                    const isActive = pathname === item.href ||
+                        (item.children?.some(child => pathname === child.href || pathname.startsWith(`${child.href}/`)));
+                    const hasChildren = item.children && item.children.length > 0;
+                    const isSubmenuOpen = openSubmenu === item.title;
+
                     return (
-                        <Link
-                            key={item.href}
-                            href={item.href}
-                            className={cn(
-                                'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200',
-                                collapsed && 'justify-center px-2',
-                                isActive
-                                    ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/25'
-                                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                        <div key={item.href}>
+                            {hasChildren ? (
+                                <>
+                                    {/* Parent with submenu */}
+                                    <button
+                                        onClick={() => !collapsed && toggleSubmenu(item.title)}
+                                        className={cn(
+                                            'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200',
+                                            collapsed && 'justify-center px-2',
+                                            isActive
+                                                ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/25'
+                                                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                                        )}
+                                    >
+                                        <item.icon className="h-5 w-5 flex-shrink-0" />
+                                        {!collapsed && (
+                                            <>
+                                                <span className="text-sm font-medium flex-1 text-left">{item.title}</span>
+                                                <ChevronDown className={cn(
+                                                    'h-4 w-4 transition-transform',
+                                                    isSubmenuOpen && 'rotate-180'
+                                                )} />
+                                            </>
+                                        )}
+                                    </button>
+                                    {/* Submenu */}
+                                    {!collapsed && isSubmenuOpen && (
+                                        <div className="mt-1 ml-4 pl-4 border-l border-border space-y-1">
+                                            {item.children?.map((child) => {
+                                                const isChildActive = pathname === child.href || pathname.startsWith(`${child.href}/`);
+                                                return (
+                                                    <Link
+                                                        key={child.href}
+                                                        href={child.href}
+                                                        className={cn(
+                                                            'flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 text-sm',
+                                                            isChildActive
+                                                                ? 'bg-muted text-foreground font-medium'
+                                                                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                                                        )}
+                                                    >
+                                                        <child.icon className="h-4 w-4 flex-shrink-0" />
+                                                        <span>{child.title}</span>
+                                                    </Link>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <Link
+                                    href={item.href}
+                                    className={cn(
+                                        'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200',
+                                        collapsed && 'justify-center px-2',
+                                        pathname === item.href
+                                            ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/25'
+                                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                                    )}
+                                >
+                                    <item.icon className="h-5 w-5 flex-shrink-0" />
+                                    {!collapsed && <span className="text-sm font-medium">{item.title}</span>}
+                                </Link>
                             )}
-                        >
-                            <item.icon className={cn('h-5 w-5 flex-shrink-0')} />
-                            {!collapsed && <span className="text-sm font-medium">{item.title}</span>}
-                        </Link>
+                        </div>
                     );
                 })}
             </nav>
@@ -103,6 +175,13 @@ export function Sidebar() {
 
 export function MobileSidebar() {
     const pathname = usePathname();
+    const [openSubmenu, setOpenSubmenu] = useState<string | null>(
+        pathname.includes('/dashboard/users') || pathname.includes('/dashboard/roles') ? 'Settings' : null
+    );
+
+    const toggleSubmenu = (title: string) => {
+        setOpenSubmenu(openSubmenu === title ? null : title);
+    };
 
     return (
         <Sheet>
@@ -125,21 +204,65 @@ export function MobileSidebar() {
                 {/* Navigation */}
                 <nav className="px-3 py-4 space-y-1">
                     {navItems.map((item) => {
-                        const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                        const hasChildren = item.children && item.children.length > 0;
+                        const isSubmenuOpen = openSubmenu === item.title;
+
                         return (
-                            <Link
-                                key={item.href}
-                                href={item.href}
-                                className={cn(
-                                    'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200',
-                                    isActive
-                                        ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/25'
-                                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                            <div key={item.href}>
+                                {hasChildren ? (
+                                    <>
+                                        <button
+                                            onClick={() => toggleSubmenu(item.title)}
+                                            className={cn(
+                                                'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200',
+                                                'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                                            )}
+                                        >
+                                            <item.icon className="h-5 w-5" />
+                                            <span className="text-sm font-medium flex-1 text-left">{item.title}</span>
+                                            <ChevronDown className={cn(
+                                                'h-4 w-4 transition-transform',
+                                                isSubmenuOpen && 'rotate-180'
+                                            )} />
+                                        </button>
+                                        {isSubmenuOpen && (
+                                            <div className="mt-1 ml-4 pl-4 border-l border-border space-y-1">
+                                                {item.children?.map((child) => {
+                                                    const isChildActive = pathname === child.href || pathname.startsWith(`${child.href}/`);
+                                                    return (
+                                                        <Link
+                                                            key={child.href}
+                                                            href={child.href}
+                                                            className={cn(
+                                                                'flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 text-sm',
+                                                                isChildActive
+                                                                    ? 'bg-muted text-foreground font-medium'
+                                                                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                                                            )}
+                                                        >
+                                                            <child.icon className="h-4 w-4" />
+                                                            <span>{child.title}</span>
+                                                        </Link>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </>
+                                ) : (
+                                    <Link
+                                        href={item.href}
+                                        className={cn(
+                                            'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200',
+                                            pathname === item.href
+                                                ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/25'
+                                                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                                        )}
+                                    >
+                                        <item.icon className="h-5 w-5" />
+                                        <span className="text-sm font-medium">{item.title}</span>
+                                    </Link>
                                 )}
-                            >
-                                <item.icon className="h-5 w-5" />
-                                <span className="text-sm font-medium">{item.title}</span>
-                            </Link>
+                            </div>
                         );
                     })}
                 </nav>
@@ -147,3 +270,4 @@ export function MobileSidebar() {
         </Sheet>
     );
 }
+

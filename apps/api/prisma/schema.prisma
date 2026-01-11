@@ -32,9 +32,13 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   
-  auditLogs       AuditLog[]
-  refreshTokens   RefreshToken[]
-  userPermissions UserPermission[]
+  auditLogs         AuditLog[]
+  refreshTokens     RefreshToken[]
+  userPermissions   UserPermission[]
+  
+  // Employee relations
+  employee          Employee?  @relation("EmployeeUser")
+  employeesCreated  Employee[] @relation("EmployeeCreatedBy")
   
   @@map("users")
 }
@@ -120,31 +124,65 @@ model AuditLog {
 }
 
 // ============================================
-// Phase 2: Master Data (Future)
+// Phase 2: Master Data
 // ============================================
 
-// model CostCenter {
-//   id          String   @id @default(cuid())
-//   code        String   @unique
-//   name        String
-//   isActive    Boolean  @default(true)
-//   createdAt   DateTime @default(now())
-//   updatedAt   DateTime @updatedAt
-//   @@map("cost_centers")
-// }
+model Branch {
+  id        String     @id @default(cuid())
+  code      String     @unique
+  name      String
+  address   String?
+  phone     String?
+  isActive  Boolean    @default(true)
+  
+  employees Employee[]
+  
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  
+  @@map("branches")
+}
 
-// model Customer {
-//   id          String   @id @default(cuid())
-//   code        String   @unique
-//   name        String
-//   type        String   // GENERAL, MECHANIC
-//   ...
-// }
+model Employee {
+  id          String    @id @default(cuid())
+  empCode     String    @unique
+  title       String    // นาย, นาง, น.ส.
+  firstName   String    // ชื่อ (ไทย)
+  lastName    String    // สกุล (ไทย)
+  firstNameEn String?   // ชื่อ (อังกฤษ)
+  lastNameEn  String?   // สกุล (อังกฤษ)
+  gender      String    // M, F
+  nationalId  String?   @unique  // เลขบัตรประชาชน (คนไทย)
+  idCardImage String?   @db.Text // รูปบัตรประชาชน (Base64)
+  passport    String?             // เลข Passport (ต่างด้าว)
+  passportImage String? @db.Text // รูป Passport (Base64)
+  passportExpiry DateTime?        // วันหมดอายุ Passport
+  visaNo      String?             // เลข Visa (ต่างด้าว)
+  visaImage   String?   @db.Text // รูป Visa (Base64)
+  visaExpiry  DateTime?           // วันหมดอายุ Visa
+  nationality String    @default("ไทย")
+  address     String?   @db.Text  // ที่อยู่ตามบัตร ปชช.
+  birthDate   DateTime?
+  position    String
+  dailyWage   Decimal   @db.Decimal(10,2)  // ค่าแรงรายวัน
+  hireDate    DateTime
+  resignDate  DateTime?
+  signature   String?   @db.Text
+  
+  branch      Branch    @relation(fields: [branchId], references: [id])
+  branchId    String
+  
+  user        User?     @relation("EmployeeUser", fields: [userId], references: [id])
+  userId      String?   @unique
+  
+  isActive    Boolean   @default(true)
+  
+  createdBy   User?     @relation("EmployeeCreatedBy", fields: [createdById], references: [id])
+  createdById String?
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@map("employees")
+}
 
-// model Product {
-//   id          String   @id @default(cuid())
-//   sku         String   @unique
-//   barcode     String?  @unique
-//   name        String
-//   ...
-// }

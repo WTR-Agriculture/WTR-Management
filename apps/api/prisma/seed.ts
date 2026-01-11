@@ -8,6 +8,8 @@ const modules = [
     { module: 'dashboard', name: 'Dashboard', actions: ['view'] },
     { module: 'users', name: 'Users', actions: ['view', 'create', 'edit', 'delete'] },
     { module: 'roles', name: 'Roles', actions: ['view', 'create', 'edit', 'delete'] },
+    { module: 'employees', name: 'Employees', actions: ['view', 'create', 'edit', 'delete', 'print'] },
+    { module: 'branches', name: 'Branches', actions: ['view', 'create', 'edit', 'delete'] },
     { module: 'inventory', name: 'Inventory', actions: ['view', 'create', 'edit', 'delete', 'print'] },
     { module: 'sales', name: 'Sales', actions: ['view', 'create', 'edit', 'delete', 'print', 'approve'] },
     { module: 'expense', name: 'Expense', actions: ['view', 'create', 'edit', 'delete', 'print', 'approve'] },
@@ -119,6 +121,23 @@ async function main() {
     });
     console.log('✅ Created Admin user (admin@wtr.local / admin123)');
 
+    // Create default branches
+    console.log('🏢 Creating default branches...');
+    const defaultBranches = [
+        { code: 'HQ', name: 'สำนักงานใหญ่', address: 'กรุงเทพมหานคร' },
+        { code: 'BKK1', name: 'สาขากรุงเทพ 1', address: 'กรุงเทพมหานคร' },
+        { code: 'CM', name: 'สาขาเชียงใหม่', address: 'เชียงใหม่' },
+    ];
+
+    for (const branch of defaultBranches) {
+        await prisma.branch.upsert({
+            where: { code: branch.code },
+            update: {},
+            create: branch,
+        });
+    }
+    console.log(`✅ Created ${defaultBranches.length} default branches`);
+
     console.log('🎉 Seed completed successfully!');
 }
 
@@ -130,3 +149,4 @@ main()
     .finally(async () => {
         await prisma.$disconnect();
     });
+
