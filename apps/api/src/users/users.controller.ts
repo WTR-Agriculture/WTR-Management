@@ -2,6 +2,7 @@ import {
     Controller,
     Get,
     Post,
+    Put,
     Patch,
     Delete,
     Body,
@@ -20,6 +21,12 @@ import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 export class UsersController {
     constructor(private readonly usersService: UsersService) { }
 
+    @Get('permissions/all')
+    @RequirePermissions('users.view')
+    getAllPermissions() {
+        return this.usersService.getAllPermissionsGrouped();
+    }
+
     @Get()
     @RequirePermissions('users.view')
     findAll(@Query() query: UserQueryDto) {
@@ -30,6 +37,21 @@ export class UsersController {
     @RequirePermissions('users.view')
     findOne(@Param('id') id: string) {
         return this.usersService.findOne(id);
+    }
+
+    @Get(':id/permissions')
+    @RequirePermissions('users.view')
+    getUserPermissions(@Param('id') id: string) {
+        return this.usersService.getUserPermissions(id);
+    }
+
+    @Put(':id/permissions')
+    @RequirePermissions('users.edit')
+    updateUserPermissions(
+        @Param('id') id: string,
+        @Body('permissionIds') permissionIds: string[],
+    ) {
+        return this.usersService.updateUserPermissions(id, permissionIds || []);
     }
 
     @Post()
@@ -50,3 +72,4 @@ export class UsersController {
         return this.usersService.remove(id);
     }
 }
+

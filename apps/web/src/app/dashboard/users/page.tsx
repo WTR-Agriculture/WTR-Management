@@ -1,10 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import {
     Table,
     TableBody,
@@ -24,11 +26,12 @@ import {
 } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Users, Plus, Search, Pencil, Trash2, MoreVertical } from 'lucide-react';
+import { Users, Plus, Search, Pencil, Trash2, MoreVertical, Shield } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import api from '@/lib/api';
@@ -47,13 +50,29 @@ interface Role {
     name: string;
 }
 
+interface Permission {
+    id: string;
+    code: string;
+    name: string;
+    action: string;
+}
+
+interface GroupedPermissions {
+    [module: string]: Permission[];
+}
+
 export default function UsersPage() {
     const [users, setUsers] = useState<User[]>([]);
     const [roles, setRoles] = useState<Role[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [dialogOpen, setDialogOpen] = useState(false);
+    const [permDialogOpen, setPermDialogOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [permissionUser, setPermissionUser] = useState<User | null>(null);
+    const [allPermissions, setAllPermissions] = useState<GroupedPermissions>({});
+    const [userPermissionIds, setUserPermissionIds] = useState<string[]>([]);
+    const [savingPerms, setSavingPerms] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -81,9 +100,29 @@ export default function UsersPage() {
         }
     };
 
+    const fetchAllPermissions = async () => {
+        try {
+            const response = await api.get('/users/permissions/all');
+            setAllPermissions(response.data);
+        } catch (error) {
+            console.error('Failed to fetch permissions:', error);
+        }
+    };
+
+    const fetchUserPermissions = async (userId: string) => {
+        try {
+            const response = await api.get(`/users/${userId}/permissions`);
+            setUserPermissionIds(response.data.map((p: Permission) => p.id));
+        } catch (error) {
+            console.error('Failed to fetch user permissions:', error);
+            setUserPermissionIds([]);
+        }
+    };
+
     useEffect(() => {
         fetchUsers();
         fetchRoles();
+        fetchAllPermissions();
     }, []);
 
     useEffect(() => {
@@ -124,6 +163,28 @@ export default function UsersPage() {
         setDialogOpen(true);
     };
 
+    const handlePermissions = async (user: User) => {
+        setPermissionUser(user);
+        await fetchUserPermissions(user.id);
+        setPermDialogOpen(true);
+    };
+
+    const handleSavePermissions = async () => {
+        if (!permissionUser) return;
+        setSavingPerms(true);
+        try {
+            await api.put(`/users/${permissionUser.id}/permissions`, {
+                permissionIds: userPermissionIds,
+            });
+            setPermDialogOpen(false);
+            setPermissionUser(null);
+        } catch (error: any) {
+            alert(error.response?.data?.message || 'Failed to save permissions');
+        } finally {
+            setSavingPerms(false);
+        }
+    };
+
     const handleDelete = async (id: string) => {
         if (!confirm('Are you sure you want to delete this user?')) return;
         try {
@@ -139,6 +200,25 @@ export default function UsersPage() {
         setFormData({ name: '', email: '', password: '', roleId: '' });
     };
 
+    const togglePermission = (permissionId: string) => {
+        setUserPermissionIds((prev) =>
+            prev.includes(permissionId)
+                ? prev.filter((id) => id !== permissionId)
+                : [...prev, permissionId]
+        );
+    };
+
+    const toggleModulePermissions = (module: string) => {
+        const modulePermIds = allPermissions[module].map((p) => p.id);
+        const allSelected = modulePermIds.every((id) => userPermissionIds.includes(id));
+
+        setUserPermissionIds((prev) =>
+            allSelected
+                ? prev.filter((id) => !modulePermIds.includes(id))
+                : [...new Set([...prev, ...modulePermIds])]
+        );
+    };
+
     const getInitials = (name: string) => {
         return name
             .split(' ')
@@ -146,6 +226,16 @@ export default function UsersPage() {
             .join('')
             .toUpperCase()
             .slice(0, 2);
+    };
+
+    // Action labels for display
+    const actionLabels: Record<string, string> = {
+        view: 'ดู',
+        create: 'เพิ่ม',
+        edit: 'แก้ไข',
+        delete: 'ลบ',
+        print: 'พิมพ์',
+        approve: 'อนุมัติ',
     };
 
     return (
@@ -158,7 +248,7 @@ export default function UsersPage() {
                     </div>
                     <div>
                         <h1 className="text-xl font-bold text-foreground">User Management</h1>
-                        <p className="text-sm text-muted-foreground">Manage system users and their roles</p>
+                        <p className="text-sm text-muted-foreground">Manage system users and their permissions</p>
                     </div>
                 </div>
                 <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
@@ -236,6 +326,90 @@ export default function UsersPage() {
                     </DialogContent>
                 </Dialog>
             </div>
+
+            {/* Permissions Dialog - Toggle Matrix */}
+            <Dialog open={permDialogOpen} onOpenChange={(open) => { setPermDialogOpen(open); if (!open) setPermissionUser(null); }}>
+                <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Shield className="h-5 w-5" />
+                            User Permissions: {permissionUser?.name}
+                        </DialogTitle>
+                        <DialogDescription>
+                            กำหนดสิทธิ์การเข้าถึงเมนูและฟังก์ชันต่างๆ สำหรับผู้ใช้นี้
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {/* Permission Matrix Table */}
+                    <div className="py-4">
+                        <div className="rounded-lg border border-border overflow-hidden">
+                            {/* Table Header */}
+                            <div className="grid grid-cols-6 gap-0 bg-muted/50 border-b border-border">
+                                <div className="p-3 font-medium text-sm text-foreground">
+                                    Module
+                                </div>
+                                {['view', 'create', 'edit', 'delete', 'print'].map((action) => (
+                                    <div key={action} className="p-3 text-center font-medium text-sm text-muted-foreground">
+                                        {actionLabels[action] || action}
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Table Body */}
+                            {Object.entries(allPermissions).map(([module, perms]) => {
+                                const availableActions = ['view', 'create', 'edit', 'delete', 'print'];
+
+                                return (
+                                    <div
+                                        key={module}
+                                        className="grid grid-cols-6 gap-0 border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors"
+                                    >
+                                        {/* Module Name with checkbox to select all */}
+                                        <div className="p-3 flex items-center gap-2">
+                                            <Checkbox
+                                                checked={perms.every((p) => userPermissionIds.includes(p.id))}
+                                                onCheckedChange={() => toggleModulePermissions(module)}
+                                                className="h-4 w-4"
+                                            />
+                                            <span className="font-medium text-sm capitalize text-foreground">
+                                                {module}
+                                            </span>
+                                        </div>
+
+                                        {/* Action Toggles */}
+                                        {availableActions.map((action) => {
+                                            const perm = perms.find((p) => p.action === action);
+
+                                            return (
+                                                <div key={action} className="p-3 flex items-center justify-center">
+                                                    {perm ? (
+                                                        <Switch
+                                                            checked={userPermissionIds.includes(perm.id)}
+                                                            onCheckedChange={() => togglePermission(perm.id)}
+                                                            className="data-[state=checked]:bg-emerald-500"
+                                                        />
+                                                    ) : (
+                                                        <span className="text-muted-foreground/30">—</span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setPermDialogOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button onClick={handleSavePermissions} disabled={savingPerms}>
+                            {savingPerms ? 'Saving...' : 'Save Permissions'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Search */}
             <Card className="border-0 shadow-sm">
@@ -319,6 +493,11 @@ export default function UsersPage() {
                                                         <Pencil className="h-4 w-4 mr-2" />
                                                         Edit
                                                     </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => handlePermissions(user)}>
+                                                        <Shield className="h-4 w-4 mr-2" />
+                                                        Permissions
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
                                                     <DropdownMenuItem
                                                         onClick={() => handleDelete(user.id)}
                                                         className="text-destructive focus:text-destructive"

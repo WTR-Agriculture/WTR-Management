@@ -32,8 +32,9 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   
-  auditLogs     AuditLog[]
-  refreshTokens RefreshToken[]
+  auditLogs       AuditLog[]
+  refreshTokens   RefreshToken[]
+  userPermissions UserPermission[]
   
   @@map("users")
 }
@@ -57,12 +58,29 @@ model Permission {
   code        String   @unique  // e.g., "sales.create", "inventory.view"
   name        String
   module      String   // e.g., "sales", "inventory"
+  action      String   // view, create, edit, delete, print
   
-  roles       Role[]
+  roles           Role[]
+  userPermissions UserPermission[]
   
   createdAt   DateTime @default(now())
   
   @@map("permissions")
+}
+
+model UserPermission {
+  id           String     @id @default(cuid())
+  
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
+  
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  permissionId String
+  
+  createdAt    DateTime   @default(now())
+  
+  @@unique([userId, permissionId])
+  @@map("user_permissions")
 }
 
 model RefreshToken {

@@ -3,63 +3,49 @@ import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
-// Permission definitions
-const permissions = [
-    // Users
-    { code: 'users.view', name: 'View Users', module: 'users' },
-    { code: 'users.create', name: 'Create Users', module: 'users' },
-    { code: 'users.update', name: 'Update Users', module: 'users' },
-    { code: 'users.delete', name: 'Delete Users', module: 'users' },
-
-    // Roles
-    { code: 'roles.view', name: 'View Roles', module: 'roles' },
-    { code: 'roles.create', name: 'Create Roles', module: 'roles' },
-    { code: 'roles.update', name: 'Update Roles', module: 'roles' },
-    { code: 'roles.delete', name: 'Delete Roles', module: 'roles' },
-
-    // Inventory
-    { code: 'inventory.view', name: 'View Inventory', module: 'inventory' },
-    { code: 'inventory.create', name: 'Create Inventory', module: 'inventory' },
-    { code: 'inventory.update', name: 'Update Inventory', module: 'inventory' },
-    { code: 'inventory.delete', name: 'Delete Inventory', module: 'inventory' },
-
-    // Sales
-    { code: 'sales.view', name: 'View Sales', module: 'sales' },
-    { code: 'sales.create', name: 'Create Sales', module: 'sales' },
-    { code: 'sales.update', name: 'Update Sales', module: 'sales' },
-    { code: 'sales.delete', name: 'Delete Sales', module: 'sales' },
-    { code: 'sales.approve', name: 'Approve Sales', module: 'sales' },
-
-    // Expense
-    { code: 'expense.view', name: 'View Expense', module: 'expense' },
-    { code: 'expense.create', name: 'Create Expense', module: 'expense' },
-    { code: 'expense.update', name: 'Update Expense', module: 'expense' },
-    { code: 'expense.delete', name: 'Delete Expense', module: 'expense' },
-    { code: 'expense.approve', name: 'Approve Expense', module: 'expense' },
-
-    // Investment
-    { code: 'investment.view', name: 'View Investment', module: 'investment' },
-    { code: 'investment.create', name: 'Create Investment', module: 'investment' },
-    { code: 'investment.approve', name: 'Approve Investment', module: 'investment' },
-
-    // Reports
-    { code: 'reports.view', name: 'View Reports', module: 'reports' },
-    { code: 'reports.export', name: 'Export Reports', module: 'reports' },
-
-    // Settings
-    { code: 'settings.view', name: 'View Settings', module: 'settings' },
-    { code: 'settings.update', name: 'Update Settings', module: 'settings' },
+// Permission definitions with actions
+const modules = [
+    { module: 'dashboard', name: 'Dashboard', actions: ['view'] },
+    { module: 'users', name: 'Users', actions: ['view', 'create', 'edit', 'delete'] },
+    { module: 'roles', name: 'Roles', actions: ['view', 'create', 'edit', 'delete'] },
+    { module: 'inventory', name: 'Inventory', actions: ['view', 'create', 'edit', 'delete', 'print'] },
+    { module: 'sales', name: 'Sales', actions: ['view', 'create', 'edit', 'delete', 'print', 'approve'] },
+    { module: 'expense', name: 'Expense', actions: ['view', 'create', 'edit', 'delete', 'print', 'approve'] },
+    { module: 'investment', name: 'Investment', actions: ['view', 'create', 'approve'] },
+    { module: 'reports', name: 'Reports', actions: ['view', 'print'] },
+    { module: 'settings', name: 'Settings', actions: ['view', 'edit'] },
 ];
+
+// Generate permissions from modules
+function generatePermissions() {
+    const permissions: { code: string; name: string; module: string; action: string }[] = [];
+
+    for (const mod of modules) {
+        for (const action of mod.actions) {
+            const actionName = action.charAt(0).toUpperCase() + action.slice(1);
+            permissions.push({
+                code: `${mod.module}.${action}`,
+                name: `${actionName} ${mod.name}`,
+                module: mod.module,
+                action: action,
+            });
+        }
+    }
+
+    return permissions;
+}
 
 async function main() {
     console.log('🌱 Starting seed...');
 
-    // Create permissions
-    console.log('📝 Creating permissions...');
+    // Generate and create permissions
+    const permissions = generatePermissions();
+    console.log(`📝 Creating ${permissions.length} permissions...`);
+
     for (const perm of permissions) {
         await prisma.permission.upsert({
             where: { code: perm.code },
-            update: {},
+            update: { action: perm.action },
             create: perm,
         });
     }
@@ -87,18 +73,18 @@ async function main() {
 
     // Create other default roles
     const defaultRoles = [
-        { name: 'finance', description: 'Finance team', modules: ['sales', 'expense', 'investment', 'reports'] },
-        { name: 'sales', description: 'Sales team', modules: ['sales', 'inventory'] },
-        { name: 'warehouse', description: 'Warehouse/Inventory team', modules: ['inventory'] },
-        { name: 'employee', description: 'Regular employee', modules: [] },
-        { name: 'investor', description: 'Investor (read-only)', modules: ['investment', 'reports'] },
+        { name: 'finance', description: 'Finance team', modules: ['dashboard', 'sales', 'expense', 'investment', 'reports'] },
+        { name: 'sales', description: 'Sales team', modules: ['dashboard', 'sales', 'inventory'] },
+        { name: 'warehouse', description: 'Warehouse/Inventory team', modules: ['dashboard', 'inventory'] },
+        { name: 'employee', description: 'Regular employee', modules: ['dashboard'] },
+        { name: 'investor', description: 'Investor (read-only)', modules: ['dashboard', 'investment', 'reports'] },
     ];
 
     for (const role of defaultRoles) {
         const rolePermissions = await prisma.permission.findMany({
             where: {
                 module: { in: role.modules },
-                code: { contains: 'view' },
+                action: 'view',
             },
         });
 

@@ -214,4 +214,83 @@ export class UsersService {
 
         return { message: 'User deleted successfully' };
     }
+
+    async getUserPermissions(userId: string) {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            include: {
+                userPermissions: {
+                    include: {
+                        permission: true,
+                    },
+                },
+            },
+        });
+
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+
+        return user.userPermissions.map((up) => ({
+            id: up.permission.id,
+            code: up.permission.code,
+            name: up.permission.name,
+            module: up.permission.module,
+            action: up.permission.action,
+        }));
+    }
+
+    async updateUserPermissions(userId: string, permissionIds: string[]) {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+        });
+
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+
+        // Delete existing user permissions
+        await this.prisma.userPermission.deleteMany({
+            where: { userId },
+        });
+
+        // Create new user permissions
+        if (permissionIds.length > 0) {
+            await this.prisma.userPermission.createMany({
+                data: permissionIds.map((permissionId) => ({
+                    userId,
+                    permissionId,
+                })),
+            });
+        }
+
+        // Return updated permissions
+        return this.getUserPermissions(userId);
+    }
+
+    async getAllPermissionsGrouped() {
+        const permissions = await this.prisma.permission.findMany({
+            orderBy: [{ module: 'asc' }, { action: 'asc' }],
+        });
+
+        // Group by module
+        const grouped = permissions.reduce(
+            (acc, permission) => {
+                if (!acc[permission.module]) {
+                    acc[permission.module] = [];
+                }
+                acc[permission.module].push({
+                    id: permission.id,
+                    code: permission.code,
+                    name: permission.name,
+                    action: permission.action,
+                });
+                return acc;
+            },
+            {} as Record<string, Array<{ id: string; code: string; name: string; action: string }>>,
+        );
+
+        return grouped;
+    }
 }
+
