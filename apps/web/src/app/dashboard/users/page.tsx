@@ -1,0 +1,341 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Users, Plus, Search, Pencil, Trash2, MoreVertical } from 'lucide-react';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import api from '@/lib/api';
+
+interface User {
+    id: string;
+    email: string;
+    name: string;
+    role: { id: string; name: string };
+    isActive: boolean;
+    createdAt: string;
+}
+
+interface Role {
+    id: string;
+    name: string;
+}
+
+export default function UsersPage() {
+    const [users, setUsers] = useState<User[]>([]);
+    const [roles, setRoles] = useState<Role[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [search, setSearch] = useState('');
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [formData, setFormData] = useState({
+        name: '',
+        email: '',
+        password: '',
+        roleId: '',
+    });
+
+    const fetchUsers = async () => {
+        try {
+            const response = await api.get('/users', { params: { search } });
+            setUsers(response.data.data);
+        } catch (error) {
+            console.error('Failed to fetch users:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchRoles = async () => {
+        try {
+            const response = await api.get('/roles');
+            setRoles(response.data);
+        } catch (error) {
+            console.error('Failed to fetch roles:', error);
+        }
+    };
+
+    useEffect(() => {
+        fetchUsers();
+        fetchRoles();
+    }, []);
+
+    useEffect(() => {
+        const debounce = setTimeout(() => {
+            fetchUsers();
+        }, 300);
+        return () => clearTimeout(debounce);
+    }, [search]);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            if (editingUser) {
+                await api.patch(`/users/${editingUser.id}`, {
+                    ...formData,
+                    password: formData.password || undefined,
+                });
+            } else {
+                await api.post('/users', formData);
+            }
+            setDialogOpen(false);
+            resetForm();
+            fetchUsers();
+        } catch (error: any) {
+            console.error('Failed to save user:', error);
+            alert(error.response?.data?.message || 'Failed to save user');
+        }
+    };
+
+    const handleEdit = (user: User) => {
+        setEditingUser(user);
+        setFormData({
+            name: user.name,
+            email: user.email,
+            password: '',
+            roleId: user.role.id,
+        });
+        setDialogOpen(true);
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm('Are you sure you want to delete this user?')) return;
+        try {
+            await api.delete(`/users/${id}`);
+            fetchUsers();
+        } catch (error: any) {
+            alert(error.response?.data?.message || 'Failed to delete user');
+        }
+    };
+
+    const resetForm = () => {
+        setEditingUser(null);
+        setFormData({ name: '', email: '', password: '', roleId: '' });
+    };
+
+    const getInitials = (name: string) => {
+        return name
+            .split(' ')
+            .map((n) => n[0])
+            .join('')
+            .toUpperCase()
+            .slice(0, 2);
+    };
+
+    return (
+        <div className="space-y-6">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                        <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                        <h1 className="text-xl font-bold text-foreground">User Management</h1>
+                        <p className="text-sm text-muted-foreground">Manage system users and their roles</p>
+                    </div>
+                </div>
+                <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
+                    <DialogTrigger asChild>
+                        <Button className="rounded-full px-6">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add User
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>{editingUser ? 'Edit User' : 'Create New User'}</DialogTitle>
+                            <DialogDescription>
+                                {editingUser ? 'Update user information' : 'Add a new user to the system'}
+                            </DialogDescription>
+                        </DialogHeader>
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="name">Name</Label>
+                                <Input
+                                    id="name"
+                                    value={formData.name}
+                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                    required
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="email">Email</Label>
+                                <Input
+                                    id="email"
+                                    type="email"
+                                    value={formData.email}
+                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                    required
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="password">
+                                    Password {editingUser && <span className="text-muted-foreground">(leave blank to keep)</span>}
+                                </Label>
+                                <Input
+                                    id="password"
+                                    type="password"
+                                    value={formData.password}
+                                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                    required={!editingUser}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="role">Role</Label>
+                                <select
+                                    id="role"
+                                    value={formData.roleId}
+                                    onChange={(e) => setFormData({ ...formData, roleId: e.target.value })}
+                                    className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                                    required
+                                >
+                                    <option value="">Select a role</option>
+                                    {roles.map((role) => (
+                                        <option key={role.id} value={role.id}>
+                                            {role.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <DialogFooter>
+                                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                                    Cancel
+                                </Button>
+                                <Button type="submit">
+                                    {editingUser ? 'Save Changes' : 'Create User'}
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </DialogContent>
+                </Dialog>
+            </div>
+
+            {/* Search */}
+            <Card className="border-0 shadow-sm">
+                <CardContent className="p-4">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Search users by name or email..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="pl-9"
+                        />
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Table */}
+            <Card className="border-0 shadow-sm">
+                <CardContent className="p-0">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="w-[300px]">User</TableHead>
+                                <TableHead>Role</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead>Created</TableHead>
+                                <TableHead className="w-[70px]"></TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {loading ? (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
+                                        Loading...
+                                    </TableCell>
+                                </TableRow>
+                            ) : users.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
+                                        No users found
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                users.map((user) => (
+                                    <TableRow key={user.id}>
+                                        <TableCell>
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="h-9 w-9">
+                                                    <AvatarFallback className="bg-gradient-to-br from-violet-500 to-purple-600 text-white text-sm">
+                                                        {getInitials(user.name)}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                                <div>
+                                                    <p className="font-medium text-foreground">{user.name}</p>
+                                                    <p className="text-sm text-muted-foreground">{user.email}</p>
+                                                </div>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant="secondary" className="font-normal">
+                                                {user.role.name}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant={user.isActive ? 'default' : 'secondary'} className="font-normal">
+                                                {user.isActive ? 'Active' : 'Inactive'}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground text-sm">
+                                            {new Date(user.createdAt).toLocaleDateString()}
+                                        </TableCell>
+                                        <TableCell>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                        <MoreVertical className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem onClick={() => handleEdit(user)}>
+                                                        <Pencil className="h-4 w-4 mr-2" />
+                                                        Edit
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                        onClick={() => handleDelete(user.id)}
+                                                        className="text-destructive focus:text-destructive"
+                                                    >
+                                                        <Trash2 className="h-4 w-4 mr-2" />
+                                                        Delete
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+        </div>
+    );
+}

@@ -1,0 +1,33 @@
+import { IsString, IsOptional, IsArray, IsUUID } from 'class-validator';
+
+export class CreateRoleDto {
+    @IsString()
+    name: string;
+
+    @IsString()
+    code: string;
+
+    @IsOptional()
+    @IsString()
+    description?: string;
+
+    @IsOptional()
+    @IsArray()
+    @IsUUID('4', { each: true })
+    permissionIds?: string[];
+}
+
+export class UpdateRoleDto {
+    @IsOptional()
+    @IsString()
+    name?: string;
+
+    @IsOptional()
+    @IsString()
+    description?: string;
+
+    @IsOptional()
+    @IsArray()
+    @IsUUID('4', { each: true })
+    permissionIds?: string[];
+}
