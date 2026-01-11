@@ -12,8 +12,10 @@ import {
     Receipt,
     TrendingUp,
     Settings,
+    LogOut,
     ChevronLeft,
     Menu,
+    Sparkles,
 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -44,32 +46,37 @@ export function Sidebar() {
     return (
         <aside
             className={cn(
-                'hidden lg:flex flex-col h-screen bg-slate-900 border-r border-slate-800 transition-all duration-300',
-                collapsed ? 'w-16' : 'w-64'
+                'hidden lg:flex flex-col h-screen bg-card border-r border-border transition-all duration-300',
+                collapsed ? 'w-[70px]' : 'w-[240px]'
             )}
         >
-            {/* Logo */}
-            <div className="h-16 flex items-center justify-between px-4 border-b border-slate-800">
+            {/* Logo + Collapse Button */}
+            <div className="h-16 flex items-center justify-between px-4 border-b border-border">
                 {!collapsed && (
                     <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-emerald-500 rounded-lg flex items-center justify-center">
-                            <span className="text-sm font-bold text-white">W</span>
+                        <div className="w-9 h-9 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-violet-500/25">
+                            <Sparkles className="h-5 w-5 text-white" />
                         </div>
-                        <span className="font-semibold text-white">WTR Management</span>
+                        <span className="font-bold text-lg text-foreground">WTR</span>
+                    </div>
+                )}
+                {collapsed && (
+                    <div className="w-9 h-9 mx-auto bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-violet-500/25">
+                        <Sparkles className="h-5 w-5 text-white" />
                     </div>
                 )}
                 <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => setCollapsed(!collapsed)}
-                    className="text-slate-400 hover:text-white hover:bg-slate-800"
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
                 >
                     <ChevronLeft className={cn('h-4 w-4 transition-transform', collapsed && 'rotate-180')} />
                 </Button>
             </div>
 
             {/* Navigation */}
-            <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+            <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
                 {navItems.map((item) => {
                     const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
                     return (
@@ -77,13 +84,14 @@ export function Sidebar() {
                             key={item.href}
                             href={item.href}
                             className={cn(
-                                'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors',
+                                'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200',
+                                collapsed && 'justify-center px-2',
                                 isActive
-                                    ? 'bg-gradient-to-r from-blue-500/20 to-emerald-500/20 text-white border border-blue-500/30'
-                                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                                    ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/25'
+                                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                             )}
                         >
-                            <item.icon className="h-5 w-5 flex-shrink-0" />
+                            <item.icon className={cn('h-5 w-5 flex-shrink-0')} />
                             {!collapsed && <span className="text-sm font-medium">{item.title}</span>}
                         </Link>
                     );
@@ -99,23 +107,23 @@ export function MobileSidebar() {
     return (
         <Sheet>
             <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="lg:hidden">
+                <Button variant="ghost" size="icon" className="lg:hidden h-9 w-9 rounded-xl">
                     <Menu className="h-5 w-5" />
                 </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-64 p-0 bg-slate-900 border-slate-800">
+            <SheetContent side="left" className="w-[240px] p-0 border-border">
                 {/* Logo */}
-                <div className="h-16 flex items-center px-4 border-b border-slate-800">
+                <div className="h-16 flex items-center px-4 border-b border-border">
                     <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-emerald-500 rounded-lg flex items-center justify-center">
-                            <span className="text-sm font-bold text-white">W</span>
+                        <div className="w-9 h-9 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-violet-500/25">
+                            <Sparkles className="h-5 w-5 text-white" />
                         </div>
-                        <span className="font-semibold text-white">WTR Management</span>
+                        <span className="font-bold text-lg text-foreground">WTR Management</span>
                     </div>
                 </div>
 
                 {/* Navigation */}
-                <nav className="p-3 space-y-1">
+                <nav className="px-3 py-4 space-y-1">
                     {navItems.map((item) => {
                         const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
                         return (
@@ -123,10 +131,10 @@ export function MobileSidebar() {
                                 key={item.href}
                                 href={item.href}
                                 className={cn(
-                                    'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors',
+                                    'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200',
                                     isActive
-                                        ? 'bg-gradient-to-r from-blue-500/20 to-emerald-500/20 text-white border border-blue-500/30'
-                                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                                        ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/25'
+                                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                                 )}
                             >
                                 <item.icon className="h-5 w-5" />

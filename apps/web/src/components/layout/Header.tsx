@@ -2,8 +2,9 @@
 
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/auth';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -13,7 +14,8 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { MobileSidebar } from './Sidebar';
-import { LogOut, User, Settings } from 'lucide-react';
+import { ThemeToggle } from '@/components/theme-toggle';
+import { LogOut, User, Settings, Search, Bell, Calendar } from 'lucide-react';
 
 export function Header() {
     const router = useRouter();
@@ -33,45 +35,82 @@ export function Header() {
             .slice(0, 2);
     };
 
+    // Get current date
+    const today = new Date();
+    const dateStr = today.toLocaleDateString('en-US', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+    });
+
     return (
-        <header className="h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 lg:px-6">
+        <header className="h-16 bg-background flex items-center justify-between px-4 lg:px-6 border-b border-border">
             <div className="flex items-center gap-4">
                 <MobileSidebar />
-                <h1 className="text-lg font-semibold text-white hidden sm:block">Dashboard</h1>
+
+                {/* Search */}
+                <div className="hidden md:flex relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Start searching here..."
+                        className="w-[280px] pl-9 rounded-full bg-muted/50 border-0 focus-visible:ring-1 focus-visible:ring-primary"
+                    />
+                </div>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
+                {/* Notifications */}
+                <Button variant="ghost" size="icon" className="rounded-full h-9 w-9 relative">
+                    <Bell className="h-4 w-4" />
+                    <span className="absolute -top-0.5 -right-0.5 h-4 w-4 bg-red-500 text-[10px] font-bold text-white rounded-full flex items-center justify-center">
+                        3
+                    </span>
+                </Button>
+
+                {/* Date Badge */}
+                <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-full">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">{dateStr}</span>
+                    <span className="h-5 w-5 rounded-full bg-primary text-[10px] text-primary-foreground flex items-center justify-center font-bold">
+                        {today.getDate()}
+                    </span>
+                </div>
+
+                <ThemeToggle />
+
+                {/* User Menu */}
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                            <Avatar className="h-10 w-10 border-2 border-blue-500/50">
-                                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-emerald-500 text-white font-medium">
+                        <Button variant="ghost" className="relative h-9 w-9 rounded-full p-0">
+                            <Avatar className="h-9 w-9 border-2 border-primary/20">
+                                <AvatarImage src="/avatar.jpg" />
+                                <AvatarFallback className="bg-gradient-to-br from-violet-500 to-purple-600 text-white text-sm font-medium">
                                     {user ? getInitials(user.name) : 'U'}
                                 </AvatarFallback>
                             </Avatar>
                         </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56 bg-slate-800 border-slate-700">
-                        <DropdownMenuLabel className="text-slate-300">
+                    <DropdownMenuContent align="end" className="w-56">
+                        <DropdownMenuLabel>
                             <div className="flex flex-col space-y-1">
-                                <p className="text-sm font-medium text-white">{user?.name}</p>
-                                <p className="text-xs text-slate-400">{user?.email}</p>
-                                <span className="text-xs text-blue-400 capitalize">{user?.role}</span>
+                                <p className="text-sm font-medium">{user?.name}</p>
+                                <p className="text-xs text-muted-foreground">{user?.email}</p>
+                                <span className="text-xs text-primary capitalize font-medium">{user?.role}</span>
                             </div>
                         </DropdownMenuLabel>
-                        <DropdownMenuSeparator className="bg-slate-700" />
-                        <DropdownMenuItem className="text-slate-300 hover:text-white hover:bg-slate-700 cursor-pointer">
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="cursor-pointer">
                             <User className="mr-2 h-4 w-4" />
                             Profile
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-slate-300 hover:text-white hover:bg-slate-700 cursor-pointer">
+                        <DropdownMenuItem className="cursor-pointer">
                             <Settings className="mr-2 h-4 w-4" />
                             Settings
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator className="bg-slate-700" />
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem
                             onClick={handleLogout}
-                            className="text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer"
+                            className="text-destructive focus:text-destructive cursor-pointer"
                         >
                             <LogOut className="mr-2 h-4 w-4" />
                             Logout
